@@ -181,7 +181,7 @@ In [38]: e.stage
 Out[38]: <Stage.started: 1>
 ```
 
-If you need to, you can give hints to the container about which specific component instances to use for which paramaters in a given instance.  Consider the following test case:
+If you need to, you can give hints to the container about which specific component instances to use for which parameters in a given instance.  Consider the following test case:
 
 ```python
     def test_attribute_hints(self):
