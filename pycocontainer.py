@@ -110,13 +110,14 @@ class LifecycleContainer(Lifecycle):
             for node in dag.toporder:
                 _start_node(node)
         else:
+            # Start this component's precursors, in ascending order
+            precursors = dag.precursors(instance)
+            for prec in precursors:
+                _start_node(prec)
+
             # Start this component.
             _start_node(instance)
 
-            # Start the descendants, in ascending order.
-            descendants = dag.successors(instance)
-            for descendant in descendants:
-                _start_node(descendant)
         self.started()
 
 
@@ -155,6 +156,12 @@ class LifecycleContainer(Lifecycle):
         """
         dag = self._instance_graph
         self.stop(instance)
+
+        # Now, restart the object and its descendants, in ascending order.
+        # TODO: Should this be eager, or lazy?
+        descendants = dag.successors(instance)
+        for descendant in descendants:
+            self.start(descendant)
         self.start(instance)
 
     def fail(self, instance=None):
