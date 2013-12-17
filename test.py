@@ -15,33 +15,41 @@ class A(Lifecycle):
     def __init__(self, b):
         super(A, self).__init__()
         self.b = b
+        self.counter = {'started':0, 'stopped':0, 'failed':0}
 
     @Lifecycle.startmethod
     def foo(self, *args):
+        self.counter['started'] += 1
         print "Called foo()"
 
     @Lifecycle.stopmethod
     def bar(self, *args):
+        self.counter['stopped'] += 1
         print "Called bar()"
 
     @Lifecycle.failmethod
     def baz(self, *args):
+        self.counter['failed'] += 1
         print "Called baz()"
 
 class B(Lifecycle):
     def __init__(self):
         super(B, self).__init__()
+        self.counter = {'started':0, 'stopped':0, 'failed':0}
 
     @Lifecycle.startmethod
     def funk(self, *args):
+        self.counter['started'] -= 1
         print "Called funk()"
 
     @Lifecycle.stopmethod
     def soul(self, *args):
+        self.counter['stopped'] -= 1
         print "Called soul()"
 
     @Lifecycle.failmethod
     def boogie(self, *args):
+        self.counter['failed'] -= 1
         print "Called boogie()"
 
 class C(object):
@@ -58,6 +66,19 @@ class TestPycocontainer(unittest.TestCase):
     def setUp(self):
         print '-------------------'
         self.pyco = Pycocontainer('Test container')
+
+    def test_method_decorators(self):
+        # When I decorate a method,
+        # The new method bindings should affect the child class,
+        # Not clobber the parent class bindings.
+        b = B()
+        a = A(b)
+        a.start()
+        self.assertEquals(1, a.counter['started'])
+        self.assertEquals(0, b.counter['started'])
+        b.start()
+        self.assertEquals(1, a.counter['started'])
+        self.assertEquals(-1, b.counter['started'])
 
     def test_register_components(self):
         # register two components
