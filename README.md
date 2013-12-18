@@ -12,22 +12,22 @@ How it works
 Define your component classes and mark them up to use lifecycle management, like so:
 
 ```python
-from pycocontainer import Lifecycle, Stage, Pycocontainer
+from pycocontainer import *
 
 class A(Lifecycle):
     def __init__(self, b):
         super(A, self).__init__()
         self.b = b
 
-    @Lifecycle.startmethod
+    @startmethod
     def foo(self, *args):
         print "Called foo()"
 
-    @Lifecycle.stopmethod
+    @stopmethod
     def bar(self, *args):
         print "Called bar()"
 
-    @Lifecycle.failmethod
+    @failmethod
     def baz(self, *args):
         print "Called baz()"
 
@@ -35,15 +35,15 @@ class B(Lifecycle):
     def __init__(self):
         super(B, self).__init__()
 
-    @Lifecycle.startmethod
+    @startmethod
     def funk(self, *args):
         print "Called funk()"
 
-    @Lifecycle.stopmethod
+    @stopmethod
     def soul(self, *args):
         print "Called soul()"
 
-    @Lifecycle.failmethod
+    @failmethod
     def boogie(self, *args):
         print "Called boogie()"
 ```
@@ -92,7 +92,7 @@ Out[11]: <Stage.stopped: 3>
 
 In [12]: pyco.start(a)
 Called funk()
-Called funk()
+Called foo()
 
 In [13]: a.stage
 Out[13]: <Stage.started: 1>
@@ -109,7 +109,7 @@ Moreover, because the container knows which components depend on each other, we 
 
 ```python
 In [15]: pyco.stop(a.b)
-Called soul()
+Called bar()
 Called soul()
 
 In [16]: a.b.stage
@@ -136,7 +136,7 @@ And, if things go badly wrong, we can explicitly track and manage failure condit
 
 ```python
 In [21]: pyco.fail(a.b)
-Called boogie()
+Called baz()
 Called boogie()
 
 In [22]: a.stage
@@ -185,16 +185,6 @@ If you need to, you can give hints to the container about which specific compone
 
 ```python
     def test_attribute_hints(self):
-        # Should be able to instantiate a class, and 'rename' its __init__ arguments
-        # This should let us point a component at a specific instance of a dependency.
-        # Register A and B
-        # instantiate two named instances of B
-        # instantiate one instance of A, pointing at first B instance.
-        # instantiate one instance of A, pointing at second B instance.
-        # The B instances should be distinct.
-        pyco = self.pyco
-        pyco.register(A, 'a')
-        pyco.register(B, 'b')
         # Register A and B
         # instantiate two named instances of B
         # instantiate one instance of A, pointing at first B instance.
