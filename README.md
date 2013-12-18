@@ -185,16 +185,6 @@ If you need to, you can give hints to the container about which specific compone
 
 ```python
     def test_attribute_hints(self):
-        # Should be able to instantiate a class, and 'rename' its __init__ arguments
-        # This should let us point a component at a specific instance of a dependency.
-        # Register A and B
-        # instantiate two named instances of B
-        # instantiate one instance of A, pointing at first B instance.
-        # instantiate one instance of A, pointing at second B instance.
-        # The B instances should be distinct.
-        pyco = self.pyco
-        pyco.register(A, 'a')
-        pyco.register(B, 'b')
         # Register A and B
         # instantiate two named instances of B
         # instantiate one instance of A, pointing at first B instance.
