@@ -35,7 +35,6 @@ class LifecycleException(Exception):
     def __init__(self, msg):
         super(LifecycleException, self).__init__(msg)
 
-
 class Stage(Enum):
     starting = 0
     started = 1
@@ -44,6 +43,26 @@ class Stage(Enum):
     failing = 4
     failed = 5
 
+def startmethod(func):
+    def start(self, *args, **kwargs):
+        self.starting()
+        func(self, *args, **kwargs)
+        self.started()
+    return start
+
+def stopmethod(func):
+    def stop(self, *args, **kwargs):
+        self.stopping()
+        func(self, *args, **kwargs)
+        self.stopped()
+    return stop
+
+def failmethod(func):
+    def fail(self, *args, **kwargs):
+        self.failing()
+        func(self, *args, **kwargs)
+        self.failed()
+    return fail
 
 class Lifecycle(object):
     def __init__(self):
@@ -56,34 +75,6 @@ class Lifecycle(object):
     def stopped(self): self.stage = Stage.stopped
     def failing(self): self.stage = Stage.failing
     def failed(self): self.stage = Stage.failed
-
-    @classmethod
-    def startmethod(cls, f):
-        def _wrapper(self, *args, **kwargs):
-            self.starting()
-            f(self, *args, **kwargs)
-            self.started()
-        cls.start = _wrapper
-        return _wrapper
-
-    @classmethod
-    def stopmethod(cls, f):
-        def _wrapper(self, *args, **kwargs):
-            self.stopping()
-            f(self, *args, **kwargs)
-            self.stopped()
-        cls.stop = _wrapper
-        return _wrapper
-
-    @classmethod
-    def failmethod(cls, f):
-        def _wrapper(self, *args, **kwargs):
-            self.failing()
-            f(self, *args, **kwargs)
-            self.failed()
-        cls.fail = _wrapper
-        return _wrapper
-
 
 class LifecycleContainer(Lifecycle):
     def __init__(self):
@@ -220,6 +211,20 @@ class Pycocontainer(LifecycleContainer):
                 component['varnames'] = varnames
                 r[cls] = component
                 ri[name] = cls
+
+                # If the class has a function named 'start', bind it to 'start' attribute.
+                member = cls.__dict__
+                funcs = [member[arg] for arg in member.keys() if member[arg].__class__.__name__ == 'function']
+                target = [f for f in funcs if f.__name__ == 'start']
+                if len(target) > 0:
+                    cls.start = target[0]
+                target = [f for f in funcs if f.__name__ == 'stop']
+                if len(target) > 0:
+                    cls.stop = target[0]
+                target = [f for f in funcs if f.__name__ == 'fail']
+                if len(target) > 0:
+                    cls.fail = target[0]
+
             else:
                 raise DuplicateComponentName('%s' % name)
         else:

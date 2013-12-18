@@ -17,17 +17,17 @@ class A(Lifecycle):
         self.b = b
         self.counter = {'started':0, 'stopped':0, 'failed':0}
 
-    @Lifecycle.startmethod
+    @startmethod
     def foo(self, *args):
         self.counter['started'] += 1
         print "Called foo()"
 
-    @Lifecycle.stopmethod
+    @stopmethod
     def bar(self, *args):
         self.counter['stopped'] += 1
         print "Called bar()"
 
-    @Lifecycle.failmethod
+    @failmethod
     def baz(self, *args):
         self.counter['failed'] += 1
         print "Called baz()"
@@ -37,17 +37,17 @@ class B(Lifecycle):
         super(B, self).__init__()
         self.counter = {'started':0, 'stopped':0, 'failed':0}
 
-    @Lifecycle.startmethod
+    @startmethod
     def funk(self, *args):
         self.counter['started'] -= 1
         print "Called funk()"
 
-    @Lifecycle.stopmethod
+    @stopmethod
     def soul(self, *args):
         self.counter['stopped'] -= 1
         print "Called soul()"
 
-    @Lifecycle.failmethod
+    @failmethod
     def boogie(self, *args):
         self.counter['failed'] -= 1
         print "Called boogie()"
