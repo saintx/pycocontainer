@@ -11,7 +11,6 @@ import itertools
 class Graph(object):
     def __init__(self):
         self.edges = {}
-        self.reverse = {}
         self.toporder = []
 
     def vertices(self):
