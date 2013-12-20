@@ -149,7 +149,7 @@ class LifecycleContainer(Lifecycle):
         self.stop(instance)
 
         # Now, restart the object and its descendants, in ascending order.
-        # TODO: Should this be eager, or lazy?
+        # TODO: Add an eager/lazy flag
         descendants = dag.successors(instance)
         for descendant in descendants:
             self.start(descendant)
@@ -214,7 +214,8 @@ class Pycocontainer(LifecycleContainer):
 
                 # If the class has a function named 'start', bind it to 'start' attribute.
                 member = cls.__dict__
-                funcs = [member[arg] for arg in member.keys() if member[arg].__class__.__name__ == 'function']
+                funcs = [member[arg] for arg in member.keys() if (
+                    member[arg].__class__.__name__ == 'function')]
                 target = [f for f in funcs if f.__name__ == 'start']
                 if len(target) > 0:
                     cls.start = target[0]
@@ -231,7 +232,56 @@ class Pycocontainer(LifecycleContainer):
             raise DuplicateComponentClass('%s' % cls)
 
 
+    def add(self, key=None, value=None):
+        """
+        In addition to lifecycle managed component instances, we can add
+        "constant" components, such as database connections, config files,
+        strings and other constants.  Constant names share the same
+        namespace as component instances, but do not participate in
+        lifecycle management.
+        """
+        if key is None or value is None:
+            return None
+        instances = self._instance_registry
+        names = self._component_names
+        if key in instances.keys() or key in names.keys():
+            raise DuplicateInstanceName('Key %s is in use.' % key)
+        else:
+            instances[key] = value
+
+
+    def get(self, key):
+        """
+        Returns the component instance corresponding with the given key,
+        or None if it does not exist.
+        """
+        instances = self._instance_registry
+        if key in instances.keys():
+            return instances[key]
+        else:
+            return None
+
+
+    def remove(self, key):
+        """
+        Removes an instance from the instance registry and returns it,
+        if it exists.  Otherwise, returns None.
+        """
+        instances = self._instance_registry
+        if key in instances.keys():
+            return instances.pop(key)
+        else:
+            return None
+
+
     def instance_of(self, cls=None, name=None, hints={}):
+        """
+        Returns an instance of the given component class.  If one exists
+        with the given name, returns that existing instance.  If none exists,
+        makes every effort to instantiate the component, and any required
+        dependencies.
+        """
+
         if cls is None or name is None:
             raise Exception('Cannot instantiate without a class and name.')
         components = self._component_registry
@@ -251,7 +301,7 @@ class Pycocontainer(LifecycleContainer):
                     raise DuplicateInstanceName('Name belongs to component of another class')
             else:
                 return instantiate(cls, name)
-                      
+
         def instantiate(cls=None, name='', processing=[]):
             """
             Instantiate a new component instance.
@@ -264,7 +314,7 @@ class Pycocontainer(LifecycleContainer):
             deps = {}
             for vname in varnames:
                 if vname in components.keys():
-                    deps[vname] = components[vname] 
+                    deps[vname] = components[vname]
                 else:
                     # is there a hint matching this vname?
                     if vname in hints.keys():
@@ -292,7 +342,7 @@ class Pycocontainer(LifecycleContainer):
                                     processing.remove(vname)
                                 else:
                                     raise CircularDependency()
-                            # if not, the dependency is unsatisfiable 
+                            # if not, the dependency is unsatisfiable
                             else:
                                 raise UnsatisfiableDependency('No registered component with class %s and name %s in container.' % (cls, vname))
 
@@ -303,7 +353,9 @@ class Pycocontainer(LifecycleContainer):
                 # update the backing dependency digraph
                 dag.add(instance)
                 for dep in [deps[x] for x in deps.keys()]:
-                    dag.add(dep, instance)
+                    # Won't trigger for constants, only registered components.
+                    if dep.__class__ in self._component_registry.keys():
+                        dag.add(dep, instance)
                 return instance
             else:
                 raise Exception('Unsatisfied dependency', 'varnames:%s, deps:%s' % (varnames, deps), r, ri)

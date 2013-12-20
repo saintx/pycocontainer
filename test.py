@@ -20,17 +20,17 @@ class A(Lifecycle):
     @startmethod
     def foo(self, *args):
         self.counter['started'] += 1
-        print "Called foo()"
+        # print "Called foo()"
 
     @stopmethod
     def bar(self, *args):
         self.counter['stopped'] += 1
-        print "Called bar()"
+        # print "Called bar()"
 
     @failmethod
     def baz(self, *args):
         self.counter['failed'] += 1
-        print "Called baz()"
+        # print "Called baz()"
 
 class B(Lifecycle):
     def __init__(self):
@@ -40,17 +40,17 @@ class B(Lifecycle):
     @startmethod
     def funk(self, *args):
         self.counter['started'] -= 1
-        print "Called funk()"
+        # print "Called funk()"
 
     @stopmethod
     def soul(self, *args):
         self.counter['stopped'] -= 1
-        print "Called soul()"
+        # print "Called soul()"
 
     @failmethod
     def boogie(self, *args):
         self.counter['failed'] -= 1
-        print "Called boogie()"
+        # print "Called boogie()"
 
 class C(object):
     def __init__(self, d):
@@ -64,7 +64,7 @@ class D(object):
 class TestPycocontainer(unittest.TestCase):
 
     def setUp(self):
-        print '-------------------'
+        # print '-------------------'
         self.pyco = Pycocontainer('Test container')
 
     def test_method_decorators(self):
@@ -203,20 +203,19 @@ class TestPycocontainer(unittest.TestCase):
 
             def start(self):
                 self.stage = Stage.starting
-                print "Called E.start()"
+                # print "Called E.start()"
                 self.stage = Stage.started
 
             def stop(self):
                 self.stage = Stage.stopping
-                print 'Called E.stop()'
+                # print 'Called E.stop()'
                 self.stage = Stage.stopped
 
             def fail(self):
                 self.stage = Stage.failing
-                print 'Called E.fail()'
+                # print 'Called E.fail()'
                 self.stage = Stage.failed
 
-        print 'trying to get instance of "jazz" component'
         e = self.pyco.instance_of(E, 'jazz')
         self.assertEqual(e.stage, Stage.stopped)
         self.pyco.start()
@@ -226,7 +225,7 @@ class TestPycocontainer(unittest.TestCase):
         self.pyco.fail()
         self.assertEqual(e.stage, Stage.failed)
 
-        
+
     def test_multiple_instantiation(self):
         # Should be able to create multiple, distinct instances of A
         # These should, by default, both depend on the same B
@@ -286,7 +285,7 @@ class TestPycocontainer(unittest.TestCase):
         pyco.start()
         self.assertEqual(b.stage, Stage.started)
         self.assertEqual(a.stage, Stage.started)
-    
+
         # stop a component. Anything depending on it should stop, too.
         pyco.stop(b)
         self.assertEqual(a.stage, Stage.stopped)
@@ -303,14 +302,63 @@ class TestPycocontainer(unittest.TestCase):
 
         # Start the component again, and we'll fail its dependency.
         pyco.start(a)
-        self.assertEqual(a.stage, Stage.started) 
+        self.assertEqual(a.stage, Stage.started)
         pyco.fail(b)
         self.assertEqual(b.stage, Stage.failed)
         self.assertEqual(a.stage, Stage.failed)
         self.assertEqual(pyco.stage, Stage.failed)
-        
+
         # Call the lifecycle methods via the container. Container manages the LC
         # Components restart (stop+start) when their dependencies do.
-        
+
+    def test_add_constants(self):
+        pyco = self.pyco
+        pyco.register(A, 'a')
+        pyco.register(B, 'b')
+        funk = pyco.instance_of(A, 'funk')
+        foo = 'bar'
+        # Add a component instance that isn't in the class registry
+        pyco.add('foo', foo)
+
+        # Get the instance, verify it's the same one we put in.
+        self.assertIs(pyco.get('foo'), foo)
+
+        # Remove it from the registry.
+        self.assertIs(pyco.remove('foo'), foo)
+        self.assertIsNone(pyco.remove('foo'))
+
+        # Instance name must not collide with existing instance names.
+        self.assertRaises(DuplicateInstanceName, pyco.add, 'funk', foo)
+
+        # Constant doesn't go into the backing DAG
+        self.assert_(foo not in pyco._instance_graph.toporder)
+
+        # Register and instantiate a dependent class.
+        class E(Lifecycle):
+            def __init__(self, foo=None):
+                self.foo = foo
+                self.stage = Stage.stopped
+            def start(self): self.started()
+            def stop(self): self.stopped()
+            def fail(self): self.failed()
+        pyco.register(E, 'e')
+        pyco.add('foo', foo)
+        e = pyco.instance_of(E, 'jazz')
+
+        # Constant still doesn't go in the backing DAG.
+        self.assert_(foo not in pyco._instance_graph.toporder)
+
+        # Verify that the instance has the component reference.
+        self.assertEquals(e.foo, 'bar')
+
+        # Lifecycle methods continue to work as expected.
+        pyco.start(e)
+        self.assertIs(e.stage, Stage.started)
+        pyco.fail(e)
+        self.assertIs(e.stage, Stage.failed)
+        pyco.stop(e)
+        self.assertIs(e.stage, Stage.stopped)
+
+
 if __name__ == '__main__':
     unittest.main()
