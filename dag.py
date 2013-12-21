@@ -1,11 +1,22 @@
-"""
-dag.py
+# -*- coding: utf-8 -*-
+'''
+    dag
+    ---
 
-A directed, acyclic graph that enforces acyclicity via topological ordering.
+    This module provides a directed, acyclic graph that enforces acyclicity
+    via topological sorting.
 
-Copyright 2013 Alexander R. Saint Croix (saintx.opensource@gmail.com)
-Published under the terms of the Apache Software License v2.0.
-"""
+    :copyright: (c) 2013 by Alexander R. Saint Croix.
+    :license: ASL v2.0, see LICENSE for more details.
+'''
+
+__version_info__ = ('0', '1', '0')
+__version__ = '.'.join(__version_info__)
+__author__ = 'Alexander R. Saint Croix'
+__license__ = 'Apache Software License v2.0'
+__copyright__ = '(c) 2013 by Alexander R. Saint Croix'
+__all__ = ['Graph']
+
 import itertools
 
 class Graph(object):
