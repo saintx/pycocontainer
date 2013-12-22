@@ -380,6 +380,10 @@ class TestPycocontainer(unittest.TestCase):
         a = pyco.instance_of(A, 'a_instance')
         self.assertIs(a.foo, foo)
         self.assertEquals(a.name, 'bar')
+        # Now let's make one with the name overriden
+        pyco.add('name', 'soul')
+        b = pyco.instance_of(A, 'b_instance')
+        self.assertEquals(b.name, 'soul')
 
 
 if __name__ == '__main__':
