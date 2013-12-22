@@ -359,6 +359,28 @@ class TestPycocontainer(unittest.TestCase):
         pyco.stop(e)
         self.assertIs(e.stage, Stage.stopped)
 
+    def test_default_dependency_resolution(self):
+        """
+        The container shouldn't require variable names with default values,
+        but should greedily use them if they are present.
+        """
+        class A(Lifecycle):
+            def __init__(self, foo, name='bar'):
+                super(A, self).__init__()
+                self.foo = foo
+                self.name = name
+            def start(self): pass
+            def stop(self): pass
+            def fail(self): pass
+
+        pyco = self.pyco
+        foo = 'funk'
+        pyco.add('foo', foo)
+        pyco.register(A, 'a')
+        a = pyco.instance_of(A, 'a_instance')
+        self.assertIs(a.foo, foo)
+        self.assertEquals(a.name, 'bar')
+
 
 if __name__ == '__main__':
     unittest.main()

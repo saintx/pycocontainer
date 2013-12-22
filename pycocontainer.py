@@ -17,8 +17,8 @@ __author__ = 'Alexander R. Saint Croix'
 __license__ = 'Apache Software License v2.0'
 __copyright__ = '(c) 2013 by Alexander R. Saint Croix'
 
-
 from enum import Enum
+import inspect
 
 class DuplicateComponentClass(Exception):
     def __init__(self, msg):
@@ -217,7 +217,7 @@ class Pycocontainer(LifecycleContainer):
         if cls not in r.keys():
             if name not in ri.keys():
                 component = {}
-                varnames = list(cls.__init__.func_code.co_varnames[1:])
+                varnames = [x for x in inspect.getargspec(cls.__init__)][0][1:]
                 component['name'] = name
                 component['varnames'] = varnames
                 r[cls] = component
@@ -313,6 +313,13 @@ class Pycocontainer(LifecycleContainer):
             else:
                 return instantiate(cls, name)
 
+        def default_args(func):
+            args, varargs, keywords, defaults = inspect.getargspec(func)
+            if None in [args, defaults]:
+                return []
+            else:
+                return dict(zip(reversed(args), reversed(defaults)))
+
         def instantiate(cls=None, name='', processing=[]):
             """
             Instantiate a new component instance.
@@ -322,43 +329,50 @@ class Pycocontainer(LifecycleContainer):
 
             component = components[cls]
             varnames = component['varnames']
+            defaults = default_args(cls.__init__)
             deps = {}
+            ignored = []
             for vname in varnames:
                 if vname in components.keys():
                     deps[vname] = components[vname]
-                else:
-                    # is there a hint matching this vname?
-                    if vname in hints.keys():
-                        # is there an instance in the instance reg with this vname hint?
-                        if hints[vname] in instances.keys():
-                            instance = instances[hints[vname]]
-                            deps[vname] = instance
-                        # if not, they're asking for something we don't have.  Bail.
-                        else:
-                            raise UnsatisfiableDependency('No component instance named %s in container.' % vname)
-                    # if not, look for instance matching the component name.
+                # is there a hint matching this vname?
+                elif vname in hints.keys():
+                    # is there an instance in the instance reg with this vname hint?
+                    if hints[vname] in instances.keys():
+                        instance = instances[hints[vname]]
+                        deps[vname] = instance
+                    # if not, they're explicitly asking for something we don't have.
                     else:
-                        # is there an instance in the instance registry?
-                        if vname in instances.keys():
-                            instance = instances[vname]
-                            deps[vname] = instance
-                        else:
-                            # if vname is in component names, recurse
-                            if vname in names.keys():
-                                cl = names[vname]
-                                if vname not in processing:
-                                    processing.append(vname)
-                                    instance = instantiate(cl, vname, processing)
-                                    deps[vname] = instance
-                                    processing.remove(vname)
-                                else:
-                                    raise CircularDependency()
-                            # if not, the dependency is unsatisfiable
-                            else:
-                                raise UnsatisfiableDependency('No registered component with class %s and name %s in container.' % (cls, vname))
+                        raise UnsatisfiableDependency('No component instance named %s in container.' % vname)
+                # if not, is there an instance registered with this name?
+                elif vname in instances.keys():
+                    instance = instances[vname]
+                    deps[vname] = instance
+                # if not, is there a component registered with this vname?
+                elif vname in names.keys():
+                    # if so, and if this isn't a cyclic dependency, recurse.
+                    cl = names[vname]
+                    if vname not in processing:
+                        processing.append(vname)
+                        instance = instantiate(cl, vname, processing)
+                        deps[vname] = instance
+                        processing.remove(vname)
+                    else:
+                        raise CircularDependency()
+                # if not, does this dependency have a default value?
+                elif vname in defaults.keys():
+                    # We'll use the default. Ignore it and proceed.
+                    ignored.append(vname)
+                    continue
+                # if not, the dependency is unsatisfiable
+                else:
+                    raise UnsatisfiableDependency(
+                        'Cannot instantiate %s without component named %s.' % (cls, vname))
+
+            args = [x for x in varnames if x not in ignored]
 
             dag = self._instance_graph
-            if len(varnames) == len(deps.keys()):
+            if len(args) == len(deps.keys()):
                 instance = cls(**deps)
                 instances[name] = instance
                 # update the backing dependency digraph
@@ -369,7 +383,7 @@ class Pycocontainer(LifecycleContainer):
                         dag.add(dep, instance)
                 return instance
             else:
-                raise Exception('Unsatisfied dependency', 'varnames:%s, deps:%s' % (varnames, deps), r, ri)
+                raise Exception('Unsatisfied dependency for args:%s, deps:%s' % (args, deps))
 
         ret = retrieve(cls, name)
         return ret
