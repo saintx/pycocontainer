@@ -213,3 +213,12 @@ It's fast. The backing DAG is _very_ good at knowing what depends on what.  It c
 
 The python class and method decorators are clean and intuitive, letting you spend less time on boilerplate lifecycle code.
 
+
+Why Dependency Injection?
+-------------------------
+Is all of this really necessary?
+
+[Alex Martelli gave a great presentation on the dependency injection design pattern for Python.](http://www.aleax.it/yt_pydi.pdf)  Over time, I hope to furnish additional concrete examples to illustrate the advantages of this design practice.
+
+(Anecdotally, I think DI containers are useful tools that help drive test driven development. If used during the design phase, it can help inform very modular, loosely coupled, easily tested software components--ravioli code, vs spaghetti code.  I personally find it helps me avoid creating modules like ```core, utils, helper``` and other junk drawer modules for dumping methods into, and it helps me stick to a more meticulous OOP design.)
+
